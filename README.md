@@ -6,6 +6,5 @@ Setup:
 *  Open browser login and go to console -> application -> cookies and copy LEETCODE_SESSION value. In Python, assign this value to SESSION_COOKIE_VALUE .
 *  For slow internet adjust the 'waitAfterRefreshTime' variable as needed
 
-To run:
-python exportLeetcodeNotesToHtml.py <url>
-
+To run:  
+```python exportLeetcodeNotesToHtml.py <url>```
