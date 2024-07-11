@@ -1,0 +1,97 @@
+<div class="discuss-markdown-container"><p>Heavy Light Decomposition (or HLD)  perform operations on the tree to answer a number of queries, each can be of one of the two types -</p><p>
+</p><ul>
+<li>Update all nodes along the path from node x to node y or node x to y.</li>
+<li>Find the sum, maximum, minimum (or any other operation that satisfies the associative property) along the path from node x to node y.</li>
+</ul>
+<p></p><p>A Segment Tree can be used to perform both types in O(log(n)). But wait! A Segment Tree can be built from a one-dimensional array / chain (set of nodes linked one after another), and what we have here is a tree. So, can we reduce the tree to chains?</p><p>
+</p><p>HLD terminology : <a href="https://usaco.guide/plat/hld?lang=cpp#definitions" rel="ugc">link</a></p><p>
+</p><p>Property :<br>
+Any path from node x to node y on the tree can pass through at most O(log N) light edges. (<a href="https://usaco.guide/plat/hld?lang=cpp#properties" rel="ugc">Proof</a>)</p><p>
+</p><p>So our problem can be broken down to the following steps -</p><p>
+</p><ol>
+<li>Creating the tree</li>
+<li>Setting up the subtree size, depth and parent for each node (using a DFS)</li>
+<li>Decomposing the tree into disjoint chains</li>
+<li>Building up the segment tree</li>
+<li>Answering queries</li>
+</ol>
+<p></p><p><strong>Implementation</strong><br>
+Certain parts of traditional approach can be modified to make implementation easier without losing efficiency.</p><p>
+</p><ul>
+<li>
+<p></p><p>The definition of heavy edge can be changed to the edge leading to the child with largest subtree, with ties broken arbitrarily. This may result is some light edges being converted to heavy, which means some heavy paths will combine to form a single path, but all heavy paths will remain disjoint. It is also still guaranteed that going down a light edge reduces subtree size to half or less.</p><p>
+</p></li>
+<li>
+<p></p><p>Instead of a building segment tree over every heavy path, a single segment tree can be used with disjoint segments allocated to each heavy path.</p><p>
+</p></li>
+<li>
+<p></p><p>It has been mentioned that answering queries requires calculation of the LCA. While LCA can be calculated separately, it is also possible to integrate LCA calculation in the process of answering queries.</p><p>
+</p><p><img src="https://assets.leetcode.com/users/images/a7b83ed4-a125-4ce5-9db5-5565a31b86e0_1639645209.158783.png" alt="image"></p><p>
+</p></li>
+</ul>
+<p></p><p><strong>Setting up the subtree size/heavy nodes, depth and parent for each node</strong>: We do a DFS on the tree to set up arrays that store parent, subtree size/heavy nodes and depth of each node.</p><p>
+</p><pre><code> <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt; parent, depth, heavy;
+ <span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">dfs</span><span class="hljs-params">(<span class="hljs-keyword">int</span> v, <span class="hljs-built_in">vector</span>&lt;<span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;&gt; <span class="hljs-keyword">const</span>&amp; adj)</span> </span>{
+    <span class="hljs-keyword">int</span> size = <span class="hljs-number">1</span>;
+    <span class="hljs-keyword">int</span> max_c_size = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">int</span> c : adj[v]) {
+        <span class="hljs-keyword">if</span> (c != parent[v]) {
+            parent[c] = v, depth[c] = depth[v] + <span class="hljs-number">1</span>;
+            <span class="hljs-keyword">int</span> c_size = dfs(c, adj);
+            size += c_size;
+            <span class="hljs-keyword">if</span> (c_size &gt; max_c_size)
+                max_c_size = c_size, heavy[v] = c;
+        }
+    }
+    <span class="hljs-keyword">return</span> size;
+}
+</code></pre>
+<p></p><p>The dfs function is used to calculate heavy[v], the child at the other end of the heavy edge from v, for every vertex v. Additionally dfs also stores the parent and depth of each vertex, which will be useful later during queries.</p><p>
+</p><p><strong>Decomposing the tree into disjoint chains and Building Segment Tree</strong> -</p><p>
+</p><pre><code><span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt; head, pos;
+
+<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">decompose</span><span class="hljs-params">(<span class="hljs-keyword">int</span> v, <span class="hljs-keyword">int</span> h, <span class="hljs-built_in">vector</span>&lt;<span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;&gt; <span class="hljs-keyword">const</span>&amp; adj)</span> </span>{
+    head[v] = h, pos[v] = cur_pos++;
+    <span class="hljs-keyword">if</span> (heavy[v] != <span class="hljs-number">-1</span>)
+        decompose(heavy[v], h, adj);
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">int</span> c : adj[v]) {
+        <span class="hljs-keyword">if</span> (c != parent[v] &amp;&amp; c != heavy[v])
+            decompose(c, c, adj);
+    }
+}
+</code></pre>
+<p></p><p>Initialisation of decompose and dfs  -</p><p>
+</p><pre><code><span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">init</span><span class="hljs-params">(<span class="hljs-built_in">vector</span>&lt;<span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;&gt; <span class="hljs-keyword">const</span>&amp; adj)</span> </span>{
+    <span class="hljs-keyword">int</span> n = adj.size();
+    parent = <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;(n);
+    depth = <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;(n);
+    heavy = <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;(n, <span class="hljs-number">-1</span>);
+    head = <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;(n);
+    pos = <span class="hljs-built_in">vector</span>&lt;<span class="hljs-keyword">int</span>&gt;(n);
+    cur_pos = <span class="hljs-number">0</span>;
+
+    dfs(<span class="hljs-number">0</span>, adj);
+    decompose(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, adj);
+}
+</code></pre>
+<p></p><p>Decomposition is performed assuming vertex 0 as root.</p><p>
+</p><p><strong>Answering queries</strong></p><p>
+</p><pre><code><span class="hljs-built_in">int</span> query(<span class="hljs-built_in">int</span> a, <span class="hljs-built_in">int</span> b) {
+    <span class="hljs-built_in">int</span> res = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">for</span> (; head[a] != head[b]; b = parent[head[b]]) {
+        <span class="hljs-keyword">if</span> (depth[head[a]] &gt; depth[head[b]])
+            swap(a, b);
+        <span class="hljs-built_in">int</span> cur_heavy_path_max = segment_tree_query(pos[head[b]], pos[b]);
+        res = <span class="hljs-built_in">max</span>(res, cur_heavy_path_max);
+    }
+    <span class="hljs-keyword">if</span> (depth[a] &gt; depth[b])
+        swap(a, b);
+    <span class="hljs-built_in">int</span> last_heavy_path_max = segment_tree_query(pos[a], pos[b]);
+    res = <span class="hljs-built_in">max</span>(res, last_heavy_path_max);
+    <span class="hljs-keyword">return</span> res;
+}
+</code></pre>
+<p></p><p><a href="https://cp-algorithms.com/graph/hld.html" rel="ugc">https://cp-algorithms.com/graph/hld.html</a></p><p>
+</p><hr>
+<p></p><p><a href="https://www.youtube.com/watch?v=_G_LMuLWMaI" rel="ugc">https://www.youtube.com/watch?v=_G_LMuLWMaI</a><br>
+<a href="https://codeforces.com/blog/entry/81317" rel="ugc">https://codeforces.com/blog/entry/81317</a></p></div>
